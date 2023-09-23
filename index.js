@@ -1,4 +1,4 @@
-import {ApolloServer, UserInputError, gql, AuthenticationError} from 'apollo-server';
+import {ApolloServer, AuthenticationError, gql, UserInputError} from 'apollo-server';
 import './db.js';
 import Person from './models/person.js';
 import User from './models/user.js';
@@ -97,7 +97,7 @@ const resolvers = {
       // //
       // // return persons.filter(byPhone)
     },
-    findPerson: (root, args) => {
+    findPerson: async (root, args) => {
       return Person.findOne({name: args.name});
       // return persons.find(p => p.name === args.name);
     }
