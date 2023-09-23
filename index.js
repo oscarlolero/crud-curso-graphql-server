@@ -1,4 +1,8 @@
-import {ApolloServer, AuthenticationError, gql, UserInputError} from 'apollo-server';
+import {ApolloServer} from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
+import {GraphQLError} from 'graphql';
+import gql from 'graphql-tag';
+
 import './db.js';
 import Person from './models/person.js';
 import User from './models/user.js';
@@ -33,11 +37,11 @@ const typeDefs = gql`
         friends: [Person!]
         id: ID!
     }
-    
+
     type Token {
         value: String!
     }
-    
+
     type Query {
         personCount: Int!
         allPersons(phone: YesNo): [Person!]!
@@ -110,7 +114,7 @@ const resolvers = {
       return true;
     },
     clearFriends: async (root, args, {currentUser}) => {
-      if (!currentUser) throw new AuthenticationError("not authenticated");
+      if (!currentUser) throw new GraphQLError("not authenticated", {extensions: {code: "UNAUTHENTICATED"}});
 
       currentUser.friends = [];
 
@@ -143,7 +147,7 @@ const resolvers = {
     },
     addPerson: async (root, args, context) => {
 
-      const { currentUser } = context;
+      const {currentUser} = context;
       if (!currentUser) throw new AuthenticationError("not authenticated");
 
       const person = new Person({...args});
@@ -209,14 +213,14 @@ const resolvers = {
       const user = await User.findOne({username: args.username});
 
       //ver clase jwt, midudev
-      if(!user || args.password !== 'secret') {
-        throw new UserInputError("Wrong credentials");
+      if (!user || args.password !== 'secret') {
+        throw new GraphQLError("wrong credentials", {extensions: {code: "WRONG_CREDENTIALS"}});
       }
 
       const userForToken = {
         username: user.username,
         id: user._id
-      }
+      };
 
       return {value: jwt.sign(userForToken, JWT_SECRET)};
     }
@@ -231,13 +235,15 @@ const resolvers = {
   }
 };
 
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
+const server = new ApolloServer({typeDefs, resolvers});
+
+const { url } = await startStandaloneServer(server, {
+  listen: {
+    port: 4000,
+  },
   context: async ({req}) => { // se ejecuta cada que recibe una peticion
     const auth = req ? req.headers.authorization : null;
-    console.log(auth)
-    if(auth && auth.toLowerCase().startsWith('bearer ')) {
+    if (auth && auth.toLowerCase().startsWith('bearer ')) {
       const decodedToken = jwt.verify(auth.substring(7), JWT_SECRET);
       const currentUser = await User.findById(decodedToken.id).populate('friends');
       return {currentUser};
@@ -245,6 +251,4 @@ const server = new ApolloServer({
   }
 });
 
-server.listen().then(({url}) => {
-  console.log(`Server ready at ${url}`);
-});
+console.log(`🚀  Server ready at ${url}`);
