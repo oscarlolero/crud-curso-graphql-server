@@ -3,6 +3,13 @@ import User from "./models/user.js";
 
 import jwt from "jsonwebtoken";
 import {GraphQLError} from "graphql";
+import {PubSub} from "graphql-subscriptions";
+
+const pubsub = new PubSub();
+
+const SUBSCRIPTIONS_EVENTS = {
+  PERSON_ADDED: 'PERSON_ADDED'
+}
 
 export const resolvers = {
   Query: {
